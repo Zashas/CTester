@@ -35,10 +35,6 @@ Voici un exemple de test CTester pour la fonction `insert`, lorsque le fichier i
 *       Retourne le nombre de bytes écrits, -1 en cas d'erreur
 */
 int insert(char *fileName, off_t pos, const void *buf, size_t nbyte) {
-	```
-
-
-	```c
 	void test_insert_no_file() {
 	set_test_metadata("insert", _("If the given file doesn't exist, return -1"), 1);
 	int ret = -1000;
