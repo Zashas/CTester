@@ -26,32 +26,35 @@ Lors de la réalisation d'un exercice, les seuls fichiers à modifier sont *test
 
 Voici un exemple de test CTester pour la fonction `insert`, lorsque le fichier indiqué n'existe pas :
 
-    /*
-     * @pre fileName!=NULL, buf!=NULL, nbyte >0
-     * @post a inséré dans le fichier filename les nbytes du buffers buf
-     *       à la position pos. Les bytes suivants dans le fichiers ont
-     *       été décalés vers la fin du fichier.
-     *       Retourne le nombre de bytes écrits, -1 en cas d'erreur
-     */
-    int insert(char *fileName, off_t pos, const void *buf, size_t nbyte) {
+```c
+/*
+* @pre fileName!=NULL, buf!=NULL, nbyte >0
+* @post a inséré dans le fichier filename les nbytes du buffers buf
+*       à la position pos. Les bytes suivants dans le fichiers ont
+*       été décalés vers la fin du fichier.
+*       Retourne le nombre de bytes écrits, -1 en cas d'erreur
+*/
+int insert(char *fileName, off_t pos, const void *buf, size_t nbyte) {
+	```
 
----
 
-    void test_insert_no_file() {
-        set_test_metadata("insert", _("If the given file doesn't exist, return -1"), 1);
-        int ret = -1000;
-        char *c="XYZ";
-    
-        monitored.open=true;
-        SANDBOX_BEGIN;
-        ret=insert("fkjkj.dat",-5,c,strlen(c));
-        SANDBOX_END;
-    
-        CU_ASSERT_EQUAL(ret,-1);
-        CU_ASSERT_EQUAL(stats.open.called, 1);
-        if (stats.open.called > 1)
-            info(_("Why did you use open more than once ?"));
-    }
+	```c
+	void test_insert_no_file() {
+	set_test_metadata("insert", _("If the given file doesn't exist, return -1"), 1);
+	int ret = -1000;
+	char *c="XYZ";
+
+	monitored.open=true;
+	SANDBOX_BEGIN;
+	ret=insert("fkjkj.dat",-5,c,strlen(c));
+	SANDBOX_END;
+
+	CU_ASSERT_EQUAL(ret,-1);
+	CU_ASSERT_EQUAL(stats.open.called, 1);
+	if (stats.open.called > 1)
+	    info(_("Why did you use open more than once ?"));
+}
+```
 
 Un test CTester est une simple fonction sans argument et sans valeur de retour. Au début du test, il est important de lui assigner certaines meta-informations qui seront renvoyées à INGInious via `void set_test_metadata(char *problem, char *descr, unsigned int weight);` :
 - *problem* est une chaîne de caractères, correspondant au problème de la tâche INGInious liée que le test vérifie (un problème sur INGInious correspond à une boite de dialogue où on peut entrer du code, une tâche correspond à un exercice, qui peut reprendre plusieurs problèmes) ;
@@ -81,20 +84,22 @@ Afin d'activer la génération de statistiques ou l'interception pour un appel s
 ### Statistiques d'appels
 Une fois le monitoring d'un appel système activé, CTester récupère automatiquement certaines statistiques de son utilisation :
 
-    void test_pop()
-    {
-        set_test_metadata("pop", _("Free the item when using pop"), 1);
-        struct LL *linked_list = ...;
-        void *last_item = (void *) linked_list->last;
-    
-        monitored.free=true;
-        SANDBOX_BEGIN;
-        pop(linked_list);
-        SANDBOX_END;
-    
-        CU_ASSERT_EQUAL(stats.free.called, 1);
-        CU_ASSERT_EQUAL(stats.free.last_params.ptr, last_item);
-    }
+```c
+void test_pop()
+{
+	set_test_metadata("pop", _("Free the item when using pop"), 1);
+	struct LL *linked_list = ...;
+	void *last_item = (void *) linked_list->last;
+
+	monitored.free=true;
+	SANDBOX_BEGIN;
+	pop(linked_list);
+	SANDBOX_END;
+
+	CU_ASSERT_EQUAL(stats.free.called, 1);
+	CU_ASSERT_EQUAL(stats.free.last_params.ptr, last_item);
+}
+```
 
 Tous les appels systèmes enregistrent le nombre d'appels (`stats.FUNC.called`), le dernier ensemble d'arguments utilisés (`stats.FUNC.last_params.ARG`, se référer aux fichiers header cités ci-dessus pour les noms des arguments de chaque appel), et l'éventuelle dernière valeur de retour (`stats.FUNC.last_return`). Pour des appels systèmes modifiant un buffer, celui-ci est également enregistré (voir par exemple `fstat`).
 
@@ -106,59 +111,65 @@ Par exemple, `failures.malloc = 0b00000000000000000000000000000101` fera échoue
 
 Selon le prototype de l'appel système, il est également possible d'indiquer la valeur de retour et la valeur d'`errno` à renvoyer lorsque l'appel échoue, respectivement via `failures.FUNC_ret` et `failures.FUNC_errno` (voir *CTester/wrap.h* pour plus de détails).
 
-    void test_write_fail() {
-        set_test_metadata("insert", "Utilisation de write: en cas d'erreur, retourne -1", 1);
-        char *c="XYZ";
-        system("echo -n ABCDEF > f.dat");
-        int ret = -1000;
-    
-        SANDBOX_BEGIN;
-        ret = insert("f.dat",3,c,strlen(c));
-        SANDBOX_END;
-        CU_ASSERT_EQUAL(ret, 0);
-        
-        ret = -1000;
-        monitored.write = true;
-        failures.write=FAIL_ONCE;
-        failures.write_ret=-1;
-        failures.write_errno=EIO;
-        
-        SANDBOX_BEGIN;
-        ret=insert("f.dat",1,c,strlen(c));
-        SANDBOX_END; 
-        CU_ASSERT_EQUAL(ret,-1);
-        
-        system("rm f.dat");
-    }
+```c
+void test_write_fail() {
+	set_test_metadata("insert", "Utilisation de write: en cas d'erreur, retourne -1", 1);
+	char *c="XYZ";
+	system("echo -n ABCDEF > f.dat");
+	int ret = -1000;
+
+	SANDBOX_BEGIN;
+	ret = insert("f.dat",3,c,strlen(c));
+	SANDBOX_END;
+	CU_ASSERT_EQUAL(ret, 0);
+
+	ret = -1000;
+	monitored.write = true;
+	failures.write=FAIL_ONCE;
+	failures.write_ret=-1;
+	failures.write_errno=EIO;
+
+	SANDBOX_BEGIN;
+	ret=insert("f.dat",1,c,strlen(c));
+	SANDBOX_END; 
+	CU_ASSERT_EQUAL(ret,-1);
+
+	system("rm f.dat");
+}
+```
 
 
 ### Accès aux logs de malloc
 Finalement, lorsque le monitoring de `malloc` a été activé, on peut utiliser les fonctions suivantes :
 
-    
-     /*
-     * returns true if the address has been managed by malloc, false
-     * otherwise (also false if address has been freed)
-     */
-     int malloced(void *addr);
-     
-     /*
-     * returns total amount of memory allocated by malloc
-     */
-     int  malloc_allocated();
+```c
+/*
+* returns true if the address has been managed by malloc, false
+* otherwise (also false if address has been freed)
+*/
+int malloced(void *addr);
+
+/*
+* returns total amount of memory allocated by malloc
+*/
+int  malloc_allocated();
+```
 
 ## Buffers "piégés"
 
 On peut partiellement vérifier que l'étudiant ne fait pas de [*buffer overflow*](https://fr.wikipedia.org/wiki/D%C3%A9passement_de_tampon) à l'aide de la fonction `trap_buffer`  :
 
-    /* @size: buffer's size
-       @type: TRAP_LEFT or TRAP_RIGHT (location of adjacent protected page)
-       @flags : permissions: OR on subset of (PROTO_READ, PROTO_WRITE, PROTO_NONE)
-       @data : fill buffer with initial data if != NULL
-       
-       Return: pointer to created buffer on the heap
-    */
-    void *trap_buffer(size_t size, int type, int flags, void *data);
+```c
+/* @size: buffer's size
+   @type: TRAP_LEFT or TRAP_RIGHT (location of adjacent protected page)
+   @flags : permissions: OR on subset of (PROTO_READ, PROTO_WRITE, PROTO_NONE)
+   @data : fill buffer with initial data if != NULL
+
+   Return: pointer to created buffer on the heap
+*/
+void *trap_buffer(size_t size, int type, int flags, void *data);
+```
+
 `trap_buffer` alloue un buffer, avec une page mémoire protégée (`PROTO_NONE`, ni lecture, ni écriture autorisées) adjacente à sa gauche ou à sa droite. Si l'étudiant dépasse la taille allouée du buffer du coté indiqué, ou tente d'écrire dans un *buffer* en lecture seule, un SEGFAULT sera généré.
 
 Il est conseillé de "piéger" tous les buffers passés aux fonctions à tester.
@@ -167,11 +178,13 @@ Il est conseillé de "piéger" tous les buffers passés aux fonctions à tester.
 
 On peut interdire l'utilisation d'une fonction de la librairie standard à l'étudiant en insérant quelque part dans *tests.c* l'annotation `BAN_FUNCS(...)`. Celle-ci peut être insérée dans un commentaire ou directement dans le code (une macro a été prévue à cet effet) :
 
-    int main(int argc,char** argv)
-    {
-        BAN_FUNCS(strlen, strcat);
-        RUN(test_mystrlen_1, test_mystrlen_2, test_mystrcat_1, test_mystrcat_2);
-    }
+```c
+int main(int argc,char** argv)
+{
+	BAN_FUNCS(strlen, strcat);
+	RUN(test_mystrlen_1, test_mystrlen_2, test_mystrcat_1, test_mystrcat_2);
+}
+```
 
 Deux points sont à souligner :
 
