@@ -34,9 +34,9 @@ Voici un exemple de test CTester pour la fonction `insert`, lorsque le fichier i
 *       été décalés vers la fin du fichier.
 *       Retourne le nombre de bytes écrits, -1 en cas d'erreur
 */
-int insert(char *fileName, off_t pos, const void *buf, size_t nbyte) {
+int insert(char *fileName, off_t pos, const void *buf, size_t nbyte);
 ```
-```
+```c
 void test_insert_no_file();
 	set_test_metadata("insert", _("If the given file doesn't exist, return -1"), 1);
 	int ret = -1000;
@@ -105,7 +105,7 @@ Tous les appels systèmes enregistrent le nombre d'appels (`stats.FUNC.called`),
 
 Il est possible de faire échouer un appel système en forçant sa valeur de retour via la variable globale `failures` : `failures.FUNC = PATTERN`, où `PATTERN` est un entier non signé sur 32 bits, le $N$ième bit indiquant si le $N$ième appel à `FUNC` doit échouer (en démarrant du bit de poids faible).  
 
-Par exemple, `failures.malloc = 0b00000000000000000000000000000101` fera échouer le 1er et 3ème appel à `malloc`.  Des constantes de pattern sont disponibles : `FAIL_ALWAYS`,`FAIL_NEVER`, `FAIL_FIRST`, `FAIL_SECOND`, `FAIL_THIRD`, `FAIL_TWICE` (pour faire échouer respectivement, toujours, jamais, le premier appel, le second, le troisième, les deux premiers).`
+Par exemple, `failures.malloc = 0b00000000000000000000000000000101` fera échouer le 1er et 3ème appel à `malloc`.  Des constantes de pattern sont disponibles : `FAIL_ALWAYS`,`FAIL_NEVER`, `FAIL_FIRST`, `FAIL_SECOND`, `FAIL_THIRD`, `FAIL_TWICE` (pour faire échouer respectivement, toujours, jamais, le premier appel, le second, le troisième, les deux premiers).
 
 Selon le prototype de l'appel système, il est également possible d'indiquer la valeur de retour et la valeur d'`errno` à renvoyer lorsque l'appel échoue, respectivement via `failures.FUNC_ret` et `failures.FUNC_errno` (voir *CTester/wrap.h* pour plus de détails).
 
