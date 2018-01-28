@@ -26,17 +26,27 @@ extern struct wrap_fail_t failures;
 extern struct wrap_log_t logs;
 
 sigjmp_buf segv_jmp;
+int true_stderr;
+int pipe_stderr[2];
 struct itimerval it_val;
 
 CU_pSuite pSuite = NULL;
 
+
+struct info_msg {
+    char *msg;
+    struct info_msg *next;
+};
+
 struct __test_metadata {
-    bool info_prio;
-    char info_msg[140];
+    struct info_msg *fifo_in;
+    struct info_msg *fifo_out;
     char problem[140];
     char descr[250];
     unsigned int weight;
+    int err;
 } test_metadata;
+
 
 void set_test_metadata(char *problem, char *descr, unsigned int weight)
 {
@@ -45,24 +55,42 @@ void set_test_metadata(char *problem, char *descr, unsigned int weight)
     strncpy(test_metadata.descr, descr, sizeof(test_metadata.descr));
 }
 
-void info(char *msg)
+void push_info_msg(char *msg)
 {
-    if (!test_metadata.info_prio)
-        strncpy(test_metadata.info_msg, msg, sizeof(test_metadata.info_msg));
+    if (strstr(msg, "#") != NULL || strstr(msg, "\n") != NULL) {
+        test_metadata.err = EINVAL;
+        return;
+    }
+
+    struct info_msg *item = malloc(sizeof(struct info_msg));
+    if (item == NULL)
+        test_metadata.err = ENOMEM;
+
+    item->next = NULL;
+    item->msg = malloc(strlen(msg) + 1);
+    if (item->msg == NULL)
+        test_metadata.err = ENOMEM;
+
+    strcpy(item->msg, msg);
+    if (test_metadata.fifo_in == NULL && test_metadata.fifo_out == NULL) {
+        test_metadata.fifo_in = item;
+        test_metadata.fifo_out = item;
+    } else {
+        test_metadata.fifo_out->next = item;
+        test_metadata.fifo_out = item;
+    }
 }
 
 
 void segv_handler(int sig, siginfo_t *unused, void *unused2)
 {
-    info(_("Your code produced a segfault."));
-    test_metadata.info_prio = 1;
+    push_info_msg(_("Your code produced a segfault."));
     siglongjmp(segv_jmp, 1);
 }
 
 void alarm_handler(int sig, siginfo_t *unused, void *unused2)
 {
-    info(_("Your code exceeded the maximal allowed execution time."));
-    test_metadata.info_prio = 1;
+    push_info_msg(_("Your code exceeded the maximal allowed execution time."));
     siglongjmp(segv_jmp, 1);
 }
 
@@ -78,7 +106,9 @@ int sandbox_begin()
     it_val.it_interval.tv_usec = 0;
     setitimer(ITIMER_REAL, &it_val, NULL);
 
-    // TODO start monitoring / toggle
+    close(STDERR_FILENO);
+    dup2(pipe_stderr[1], STDERR_FILENO);
+
     return (sigsetjmp(segv_jmp,1) == 0);
 }
 
@@ -89,6 +119,21 @@ void sandbox_fail()
 
 void sandbox_end()
 {
+    // Remapping stderr to the orignal one ...
+    close(STDERR_FILENO);
+    dup2(true_stderr, STDERR_FILENO);
+
+    // ... and looking for a double free warning
+    char buf[BUFSIZ];
+    int n;
+    while ((n = read(pipe_stderr[0], buf, BUFSIZ)) > 0) {
+        if (strstr(buf, "double free or corruption") != NULL) {
+            CU_FAIL("Double free or corruption");
+            push_info_msg(_("Your code produced a double free."));
+        }
+        write(STDERR_FILENO, buf, n);
+    }
+
     wrap_monitoring = false;
 
     it_val.it_value.tv_sec = 0;
@@ -118,24 +163,27 @@ void start_test()
     bzero(&logs,sizeof(logs));
 }
 
-void end_test()
-{
-}
-
-
 int __real_exit(int status);
 int __wrap_exit(int status){
     return status;
 }
 
 int run_tests(void *tests[], int nb_tests) {
+    int ret;
     setlocale (LC_ALL, "");
     bindtextdomain("tests", getenv("PWD"));
     bind_textdomain_codeset("messages", "UTF-8");
     textdomain("tests");
 
-    /*Ignore double free*/
-    mallopt(M_CHECK_ACTION, 0);
+    mallopt(M_PERTURB, 142); // newly allocated memory with malloc will be set to ~142
+
+    // Code for detecting properly double free errors
+    mallopt(M_CHECK_ACTION, 1); // don't abort if double free
+    true_stderr = dup(STDERR_FILENO); // preparing a non-blocking pipe for stderr
+    pipe(pipe_stderr);
+    int flags = fcntl(pipe_stderr[0], F_GETFL, 0);
+    fcntl(pipe_stderr[0], F_SETFL, flags | O_NONBLOCK);
+    putenv("LIBC_FATAL_STDERR_=2"); // needed otherwise libc doesn't print to program's stderr
 
     /* make sure that we catch segmentation faults */
     struct sigaction sa;
@@ -152,9 +200,14 @@ int run_tests(void *tests[], int nb_tests) {
     sa.sa_sigaction = segv_handler;
     sigaltstack(&ss, 0);
     sigfillset(&sa.sa_mask);
-    sigaction(SIGSEGV, &sa, NULL);
+    ret = sigaction(SIGSEGV, &sa, NULL);
+    if (ret)
+        return ret;
     sa.sa_sigaction = alarm_handler;
-    sigaction(SIGALRM, &sa, NULL);
+    ret = sigaction(SIGALRM, &sa, NULL);
+    if (ret)
+        return ret;
+
 
     /* Output file containing succeeded / failed tests */
     FILE* f_out = fopen("results.txt", "w");
@@ -165,9 +218,6 @@ int run_tests(void *tests[], int nb_tests) {
     /* initialize the CUnit test registry */
     if (CUE_SUCCESS != CU_initialize_registry())
         return CU_get_error();
-
-    //CU_basic_set_mode(CU_BRM_SILENT);
-    //CU_basic_set_mode(CU_BRM_VERBOSE);
 
     /* add a suite to the registry */
     pSuite = CU_add_suite("Suite_1", init_suite1, clean_suite1);
@@ -190,21 +240,43 @@ int run_tests(void *tests[], int nb_tests) {
         printf("\n==== Results for test %s : ====\n", DlInfo.dli_sname);
 
         start_test();
-        CU_ErrorCode ret = CU_basic_run_test(pSuite,pTest);
-        end_test();
 
+        CU_ErrorCode ret = CU_basic_run_test(pSuite,pTest);
         if (ret != CUE_SUCCESS)
             return CU_get_error();
+
+        if (test_metadata.err)
+            return test_metadata.err;
+
         int nb = CU_get_number_of_tests_failed();
         if (nb > 0)
-            ret = fprintf(f_out, "%s|FAIL|%s|%d|%s\n", test_metadata.problem,
-                    test_metadata.descr, test_metadata.weight, test_metadata.info_msg);
-        else
-            ret = fprintf(f_out, "%s|SUCCESS|%s|%d|%s\n", test_metadata.problem,
-                    test_metadata.descr, test_metadata.weight, test_metadata.info_msg);
+            ret = fprintf(f_out, "%s#FAIL#%s#%d", test_metadata.problem,
+                    test_metadata.descr, test_metadata.weight);
 
+        else
+            ret = fprintf(f_out, "%s#SUCCESS#%s#%d", test_metadata.problem,
+                    test_metadata.descr, test_metadata.weight);
         if (ret < 0)
             return ret;
+
+        while (test_metadata.fifo_in != NULL) {
+            struct info_msg *head = test_metadata.fifo_in;
+            ret = fprintf(f_out, "#%s", head->msg);
+
+            if (head->msg != NULL)
+                free(head->msg);
+            test_metadata.fifo_in = head->next;
+            free(head);
+
+            if (ret < 0)
+                return ret;
+        }
+
+        test_metadata.fifo_out = NULL;
+        ret = fprintf(f_out, "\n");
+        if (ret < 0)
+            return ret;
+
     }
 
     fclose(f_out);

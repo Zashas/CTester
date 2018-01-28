@@ -25,7 +25,7 @@ void sandbox_end();
 
 // To use inside tests
 void set_test_metadata(char *problem, char *descr, unsigned int weight);
-void info(char *msg);
+void push_info_msg(char *msg);
 
 
 // Set to true to enable monitoring features

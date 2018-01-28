@@ -70,8 +70,8 @@ if p.returncode:
 #exit(0)
 
 # Fetch CUnit test results
-results_raw = [r.split('|') for r in open('results.txt').read().splitlines()]
-results = [{'pid':r[0], 'code':r[1], 'desc':r[2], 'weight':int(r[3]), 'info':r[4]} for r in results_raw]
+results_raw = [r.split('#') for r in open('results.txt').read().splitlines()]
+results = [{'pid':r[0], 'code':r[1], 'desc':r[2], 'weight':int(r[3]), 'info_msgs':r[4:]} for r in results_raw]
 
 
 # Produce feedback
@@ -89,11 +89,11 @@ for test in results:
 
     if test['code'] == 'SUCCESS':
         score += test['weight']
-        feedback.set_problem_feedback("* {desc}\n\n  => réussi ({weight}/{weight}) pts)\n\n".format(**test)+("  Info: {}\n\n".format(test['info']) if test['info'] else '\n'),
+        feedback.set_problem_feedback("* {desc}\n\n  => réussi ({weight}/{weight}) pts)\n\n".format(**test)+("  Info: {}\n\n".format(" — ".join(test['info_msgs'])) if test['info_msgs'] else '\n'),
                 test['pid'], True)
         tests_result[test['pid']] = True if tests_result.get(test['pid'], True) else False
     else:
-        feedback.set_problem_feedback("* {desc}\n\n  => échoué (0/{weight}) pts)\n\n".format(**test)+("  Info: {}\n\n".format(test['info']) if test['info'] else '\n'),
+        feedback.set_problem_feedback("* {desc}\n\n  => échoué (0/{weight}) pts)\n\n".format(**test)+("  Info: {}\n\n".format(" — ".join(test['info_msgs'])) if test['info_msgs'] else '\n'),
                 test['pid'], True)
         tests_result[test['pid']] = False
         

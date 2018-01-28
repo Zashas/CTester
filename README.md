@@ -2,8 +2,8 @@
 
 CTester est une librairie permettant d'écrire simplement et rapidement des tests INGInious pour des exercices en C. Elle est basée sur CUnit et offre certaines fonctionnalités pratiques :
 
- - Sandboxing du code de l'étudiant (segfaults, timeout)
- - Buffers "piégés" (read-only et mémoire adjacente protégée)
+ - Sandboxing du code de l'étudiant (segfaults, timeout, *double free*)
+ - Buffers "piégés" (read-only et mémoire adjacente protégée, mémoire allouée par malloc initialement non nulle)
  - Retour d'info à l'étudiant via INGInious
  - Statistiques d'utilisation et interception de certains appels systèmes
 - Interdiction d'utiliser des fonctions spécifiques
@@ -50,7 +50,7 @@ void test_insert_no_file();
 	CU_ASSERT_EQUAL(ret,-1);
 	CU_ASSERT_EQUAL(stats.open.called, 1);
 	if (stats.open.called > 1)
-	    info(_("Why did you use open more than once ?"));
+	    push_info_msg(_("Why did you use open more than once ?"));
 }
 ```
 
@@ -61,7 +61,7 @@ Un test CTester est une simple fonction sans argument et sans valeur de retour. 
 
 Lorsqu'on veut faire appel au code de l'étudiant, il est **OBLIGATOIRE** de le faire depuis la [*sandbox*](https://fr.wikipedia.org/wiki/Sandbox_%28s%C3%A9curit%C3%A9_informatique%29), en utilisant les macros `SANDBOX_BEGIN` et `SANDBOX_END`. La *sandbox* permet d'éviter qu'un *segfault* ou une boucle infinie dans le code de l'étudiant ne fasse planter toute la suite de tests. De même, les fonctionnalités de monitoring d'appels systèmes ne fonctionnent qu'à l'intérieur de la *sandbox*. Il est important de préciser que le code à l'intérieur de celle-ci est capable de crasher à tout moment, propulsant alors l'exécution du programme à ce qui suit `SANDBOX_END`.  Dès lors, si vous souhaitez utiliser des variables dans vos assertions à la fin du test, il faut déclarer celles-ci en dehors de la *sandbox* (comme `ret` dans l'exemple).
 
-Tous les types d'assertions de CUnit sont disponibles dans CTester, se référer à [la documentation de CUnit](http://cunit.sourceforge.net/doc/writing_tests.html). La fonction `info` permet d'indiquer un message supplémentaire à l'étudiant, pour l'aider à corriger son code. Il ne peut y avoir qu'un message d'info par test, et ce message est automatiquement réécrit par CTester pour indiquer un éventuel *segfault* ou *timeout* si cela arrive.
+Tous les types d'assertions de CUnit sont disponibles dans CTester, se référer à [la documentation de CUnit](http://cunit.sourceforge.net/doc/writing_tests.html). La fonction `push_info_msg` permet d'indiquer un message supplémentaire à l'étudiant, pour l'aider à corriger son code. CTester rapporte à l'étudiant automatiquement un éventuel *segfault*, *timeout* ou *double free*. On peut pousser autant de messages que l'on souhaite, mais le framework interdit l'usage du caractère '#' ou d'un retour à la ligne dans les messages.
 
 Finalement, afin de de permettre de traduire les suites de tests, il est également important d'appliquer *gettext* à toutes vos chaînes de caractères via la macro `_` : `_("My string")`. La possibilité de traduire ces chaînes en français est expliquée dans la section "Internationalisation".
 
@@ -152,6 +152,8 @@ int malloced(void *addr);
 */
 int  malloc_allocated();
 ```
+
+A noter également que `malloc` a été configuré (via `mallopt`) de façon à ce que toute mémoire allouée est garantie de ne pas être initialisée à 0.
 
 ## Buffers "piégés"
 
