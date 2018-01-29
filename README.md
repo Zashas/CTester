@@ -123,7 +123,7 @@ void test_write_fail() {
 
 	ret = -1000;
 	monitored.write = true;
-	failures.write=FAIL_ONCE;
+	failures.write=FAIL_FIRST;
 	failures.write_ret=-1;
 	failures.write_errno=EIO;
 
