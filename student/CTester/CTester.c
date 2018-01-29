@@ -101,8 +101,6 @@ void alarm_handler(int sig, siginfo_t *unused, void *unused2)
 
 int sandbox_begin()
 {
-    wrap_monitoring = true;
-
     // Start timer
     it_val.it_value.tv_sec = 2;
     it_val.it_value.tv_usec = 0;
@@ -112,6 +110,8 @@ int sandbox_begin()
 
     close(STDERR_FILENO);
     dup2(pipe_stderr[1], STDERR_FILENO);
+
+    wrap_monitoring = true;
 
     return (sigsetjmp(segv_jmp,1) == 0);
 }
@@ -123,6 +123,8 @@ void sandbox_fail()
 
 void sandbox_end()
 {
+    wrap_monitoring = false;
+
     // Remapping stderr to the orignal one ...
     close(STDERR_FILENO);
     dup2(true_stderr, STDERR_FILENO);
@@ -138,7 +140,6 @@ void sandbox_end()
         write(STDERR_FILENO, buf, n);
     }
 
-    wrap_monitoring = false;
 
     it_val.it_value.tv_sec = 0;
     it_val.it_value.tv_usec = 0;
