@@ -1,6 +1,4 @@
 #define _GNU_SOURCE
-#include <dlfcn.h>
-#include <malloc.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -16,6 +14,12 @@
 #include <libintl.h>
 #include <locale.h>
 #define _(STRING) gettext(STRING)
+#include <dlfcn.h>
+
+#ifdef __linux__
+#include <malloc.h>
+#endif
+
 
 #include "wrap.h"
 
@@ -175,10 +179,12 @@ int run_tests(void *tests[], int nb_tests) {
     bind_textdomain_codeset("messages", "UTF-8");
     textdomain("tests");
 
+#ifdef __linux__
     mallopt(M_PERTURB, 142); // newly allocated memory with malloc will be set to ~142
 
     // Code for detecting properly double free errors
     mallopt(M_CHECK_ACTION, 1); // don't abort if double free
+#endif
     true_stderr = dup(STDERR_FILENO); // preparing a non-blocking pipe for stderr
     pipe(pipe_stderr);
     int flags = fcntl(pipe_stderr[0], F_GETFL, 0);
