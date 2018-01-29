@@ -247,8 +247,7 @@ int run_tests(void *tests[], int nb_tests) {
 
         start_test();
 
-        CU_ErrorCode ret = CU_basic_run_test(pSuite,pTest);
-        if (ret != CUE_SUCCESS)
+        if (CU_basic_run_test(pSuite,pTest) != CUE_SUCCESS)
             return CU_get_error();
 
         if (test_metadata.err)
