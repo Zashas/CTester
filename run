@@ -91,7 +91,9 @@ tests_result = {}
 
 for test in results:
     total += test['weight']
-
+    for tag in test['tags']:
+        if tag != "":
+            feedback.set_tag(tag, True)
     if test['code'] == 'SUCCESS':
         score += test['weight']
         feedback.set_problem_feedback("* {desc}\n\n  => réussi ({weight}/{weight}) pts)\n\n".format(**test)+("  Info: {}\n\n".format(" — ".join(test['info_msgs'])) if test['info_msgs'] else '\n'),
@@ -107,10 +109,6 @@ for pid, result in tests_result.items():
         feedback.set_problem_result("success", pid)
     else:
         feedback.set_problem_result("failed", pid)
-        
-
-for tag in results['tags']:
-    feedback.set_tag(tag, 1)
 
 score = 100*score/(total if not total == 0 else 1)
 feedback.set_grade(score)
