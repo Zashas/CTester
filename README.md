@@ -72,6 +72,7 @@ Il est possible de récupérer des statistiques d'utilisation et d'intercepter c
 
 Les appels systèmes interceptables sont :
 * *wrap_getpid.h* : getpid
+* *wrap_sleep.h* : sleep
 * *wrap_file.h* : open, creat, close, read, write, stat, fstat, lseek
 * *wrap_malloc.h* : malloc, calloc, realloc, free
 * *wrap_mutex.h* : pthread_mutex_lock, pthread_mutex_trylock, pthread_mutex_unlock, pthread_mutex_init, pthread_mutex_destroy
@@ -191,6 +192,10 @@ Deux points sont à souligner :
 
  - La chaîne  `BAN_FUNCS(...)` ne doit être présente qu'une seule fois dans le code source (seule sa dernière occurrence est prise en compte).
  - L'interdiction s'applique à tous les problèmes, c'est-à-dire toutes les fonctions qui seront injectées dans `student_code.c.tpl`. Il n'est pas possible d'appliquer une interdiction à un problème spécifique.
+
+## Interception de stdout et stderr
+
+Il est possible de récupérer les streams standards de sortie et d'erreur écrits par du code exécuté dans la *sandbox*. Deux *file descriptors* `stdout_cpy` et `stderr_cpy` sont accessibles en lecture (non-bloquante) à cet effet. Les deux buffers sont remis à zéro dès qu'une nouvelle sandbox est créée.
 
 ## Internationalisation
 
