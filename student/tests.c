@@ -13,15 +13,6 @@ void test_myfunc_ret() {
     ret = myfunc(21);
     SANDBOX_END;
 
-    SANDBOX_BEGIN;
-    ret = myfunc(21);
-    SANDBOX_END;
-
-
-    char buf[10];
-    read(stdout_cpy, buf, 10);
-    printf("intercepted: %s\n", buf); 
-
     CU_ASSERT_EQUAL(ret,0);
 }
 

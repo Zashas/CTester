@@ -174,7 +174,7 @@ void *trap_buffer(size_t size, int type, int flags, void *data);
 
 `trap_buffer` alloue un buffer, avec une page mémoire protégée (`PROTO_NONE`, ni lecture, ni écriture autorisées) adjacente à sa gauche ou à sa droite. Si l'étudiant dépasse la taille allouée du buffer du coté indiqué, ou tente d'écrire dans un *buffer* en lecture seule, un SEGFAULT sera généré.
 
-Il est conseillé de "piéger" tous les buffers passés aux fonctions à tester.
+Il est conseillé de "piéger" tous les buffers passés aux fonctions à tester. On peut ensuite libérer le *buffer* via `int free_trap(void *ptr, size_t size);` (qui est un raccourci vers `munmap`).
 
 ## Interdiction de fonctions
 
