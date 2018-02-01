@@ -164,7 +164,7 @@ On peut partiellement vérifier que l'étudiant ne fait pas de [*buffer overflow
 ```c
 /* @size: buffer's size
    @type: TRAP_LEFT or TRAP_RIGHT (location of adjacent protected page)
-   @flags : permissions: OR on subset of (PROTO_READ, PROTO_WRITE, PROTO_NONE)
+   @flags : permissions: OR on subset of (PROT_READ, PROT_WRITE, PROT_NONE)
    @data : fill buffer with initial data if != NULL
 
    Return: pointer to created buffer on the heap
@@ -172,7 +172,7 @@ On peut partiellement vérifier que l'étudiant ne fait pas de [*buffer overflow
 void *trap_buffer(size_t size, int type, int flags, void *data);
 ```
 
-`trap_buffer` alloue un buffer, avec une page mémoire protégée (`PROTO_NONE`, ni lecture, ni écriture autorisées) adjacente à sa gauche ou à sa droite. Si l'étudiant dépasse la taille allouée du buffer du coté indiqué, ou tente d'écrire dans un *buffer* en lecture seule, un SEGFAULT sera généré.
+`trap_buffer` alloue un buffer, avec une page mémoire protégée (`PROT_NONE`, ni lecture, ni écriture autorisées) adjacente à sa gauche ou à sa droite. Si l'étudiant dépasse la taille allouée du buffer du coté indiqué, ou tente d'écrire dans un *buffer* en lecture seule, un SEGFAULT sera généré.
 
 Il est conseillé de "piéger" tous les buffers passés aux fonctions à tester. On peut ensuite libérer le *buffer* via `int free_trap(void *ptr, size_t size);` (qui est un raccourci vers `munmap`).
 
